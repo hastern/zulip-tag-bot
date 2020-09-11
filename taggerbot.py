@@ -148,7 +148,7 @@ class TaggerBotHandler:
     strings = {
         "TAG_LIST": "Hi @**{}**, you are currently tagged with: {}",
         "TAG_SEARCH": "Hi @**{}**, here's a list of everybody tagged with: {}\n\n{}",
-        "TAG_JOIN_AND": " and ",
+        "TAG_JOIN_AND": "and",
         "TAG_LIMIT": "Tag search is currently limited to: {}",
         "TAG_UNLIMIT": "Tag search is currently unlimited",
         "ERR_PARAM": "Sorry, I didn't understand you, a parameter is missing",
@@ -269,7 +269,7 @@ class TaggerBotHandler:
                         message,
                         self.strings["TAG_SEARCH"].format(
                             sender,
-                            self.strings["TAG_JOIN_AND"].join(all_tags),
+                            (" " + self.strings["TAG_JOIN_AND"] + " ").join(all_tags),
                             "\n".join(
                                 "- @**{}**".format(user) for user in intersection
                             ),
