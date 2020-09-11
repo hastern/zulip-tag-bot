@@ -136,8 +136,8 @@ class TaggerBotHandler:
     def initialize(self, bot_handler: Any) -> None:
         self.config_info = bot_handler.get_config_info("TaggerBot")
         for key, val in self.config_info.items():
-            if key.startswith("STRING_"):
-                self.strings[key[7:]] = val
+            if key.startswith("string_"):
+                self.strings[key[7:].upper()] = val
 
     def usage(self) -> str:
         return "{}\n\n{}".format(
