@@ -1,6 +1,8 @@
 import collections
 import contextlib
 import logging
+import json
+import pathlib
 import textwrap
 
 from typing import Any, Dict, Optional
@@ -29,7 +31,7 @@ class TagMapping:
         return {t: list(us) for t, us in self.tags.items() if len(us) > 0}
 
     def load(self, storage):
-        d = storage.get(self.STORAGE_KEY) if storage.contains(self.STORAGE_KEY) else {}
+        d = storage.get(self.STORAGE_KEY, {})
         self.tags.clear()
         self.users.clear()
         self.dirty = False
@@ -70,6 +72,53 @@ class TagMapping:
         if user is not None:
             return self.users[user]
         raise KeyError()
+
+
+class StorageContainer:
+    def get(self, key, default=None):
+        raise NotImplemented
+
+    def put(self, key, val):
+        raise NotImplemented
+
+    def contains(self, key):
+        raise NotImplemented
+
+
+class ZulipStorage(StorageContainer):
+    def __init__(self, handler):
+        self.handler = handler
+
+    def get(self, key, default=None):
+        if self.contains(key):
+            return self.handler.storage.get(key)
+        else:
+            return default
+
+    def put(self, key, val):
+        return self.handler.storage.put(key, val)
+
+    def contains(self, key):
+        return self.handler.storage.contains(key)
+
+
+class JsonFileStorage(StorageContainer):
+    def __init__(self, fname):
+        self.path = pathlib.Path(fname)
+        if self.path.exists():
+            self.data = json.load(self.path.open("r"))
+        else:
+            self.data = {}
+
+    def get(self, key, default=None):
+        return self.data.get(key, default)
+
+    def put(self, key, val):
+        self.data[key] = val
+        json.dump(self.data, self.path.open("w"))
+
+    def contains(self, key):
+        return key in self.data
 
 
 def read_parameters(params):
@@ -134,10 +183,14 @@ class TaggerBotHandler:
     }
 
     def initialize(self, bot_handler: Any) -> None:
+        self.storage = ""
         self.config_info = bot_handler.get_config_info("TaggerBot")
         for key, val in self.config_info.items():
             if key.startswith("string_"):
                 self.strings[key[7:].upper()] = val
+            elif key == "storage" and val.endswith(".json"):
+                self.storage = val
+        logger.debug(self.config_info)
 
     def usage(self) -> str:
         return "{}\n\n{}".format(
@@ -163,6 +216,12 @@ class TaggerBotHandler:
     def handle_message(self, message: Dict[str, str], bot_handler: Any) -> None:
         quoted_name = bot_handler.identity().mention
         original_content = message["content"].strip()
+
+        if self.storage.endswith(".json"):
+            storage = JsonFileStorage(self.storage)
+        else:
+            storage = ZulipStorage(bot_handler)
+
         if ":" not in original_content:
             command, *params = original_content.strip().split(" ", 1)
         else:
@@ -189,7 +248,7 @@ class TaggerBotHandler:
                 }
                 ctx = cmd_funcs.get(command, CommandContext())
                 all_tags = ctx.parser(params)
-                with TagMapping().use(bot_handler.storage) as tags:
+                with TagMapping().use(storage) as tags:
                     ctx.handler(tags, sender, *all_tags)
                     bot_handler.send_reply(
                         message,
@@ -199,13 +258,9 @@ class TaggerBotHandler:
                     )
             elif command in [self.strings["COMMAND_SEARCH"]]:
                 all_tags = read_parameters(params)
-                with TagMapping().use(bot_handler.storage) as tags:
+                with TagMapping().use(storage) as tags:
                     results = [tags.find(tag=tag) for tag in all_tags]
-                    limit = set(
-                        bot_handler.storage.get("limit")
-                        if bot_handler.storage.contains("limit")
-                        else []
-                    )
+                    limit = set(storage.get("limit", []))
                     if len(limit) > 0:
                         intersection = limit.intersection(*results)
                     else:
@@ -222,11 +277,7 @@ class TaggerBotHandler:
                     )
             elif command in [self.strings["COMMAND_LIMIT"]]:
                 users = read_parameters(params)
-                limit = set(
-                    bot_handler.storage.get("limit")
-                    if bot_handler.storage.contains("limit")
-                    else []
-                )
+                limit = set(storage.get("limit", []))
                 limit = limit.union(users)
                 if len(limit) > 0:
                     bot_handler.send_reply(
@@ -236,9 +287,9 @@ class TaggerBotHandler:
                     bot_handler.send_reply(
                         message, self.strings["TAG_UNLIMIT"],
                     )
-                bot_handler.storage.put("limit", list(limit))
+                storage.put("limit", list(limit))
             elif command in [self.strings["COMMAND_UNLIMIT"]]:
-                bot_handler.storage.set("limit", [])
+                storage.put("limit", [])
                 bot_handler.send_reply(
                     message, self.strings["TAG_UNLIMIT"],
                 )
