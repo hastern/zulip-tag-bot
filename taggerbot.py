@@ -26,7 +26,7 @@ class TagMapping:
         self.dirty = False
 
     def dump(self):
-        return {t: us for t, us in self.tags.items() if len(us) > 0}
+        return {t: list(us) for t, us in self.tags.items() if len(us) > 0}
 
     def load(self, storage):
         d = storage.get(self.STORAGE_KEY) if storage.contains(self.STORAGE_KEY) else {}
