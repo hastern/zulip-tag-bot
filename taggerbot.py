@@ -36,9 +36,9 @@ class TagMapping:
         self.users.clear()
         self.dirty = False
         for tag, users in d.items():
-            self.tags[tag].update(users)
+            self.tags[tag.lower()].update(users)
             for user in users:
-                self.users[user].add(tag)
+                self.users[user].add(tag.lower())
         return self
 
     def store(self, storage):
@@ -56,19 +56,19 @@ class TagMapping:
     def add(self, user, *tags):
         self.dirty = True
         for tag in tags:
-            self.tags[tag].add(user)
-            self.users[user].add(tag)
+            self.tags[tag.lower()].add(user)
+            self.users[user].add(tag.lower())
 
     def remove(self, user, *tags):
         self.dirty = True
         for tag in tags:
-            self.tags[tag].discard(user)
-            self.users[user].discard(tag)
+            self.tags[tag.lower()].discard(user)
+            self.users[user].discard(tag.lower())
 
     def find(self, tag=None, user=None):
         # assert tag is None ^ user is None
         if tag is not None:
-            return self.tags[tag]
+            return self.tags[tag.lower()]
         if user is not None:
             return self.users[user]
         raise KeyError()
