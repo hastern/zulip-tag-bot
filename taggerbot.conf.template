@@ -4,6 +4,8 @@ STRING_TAG_LIST = Hi @**{}**, you are currently tagged with: {}
 STRING_TAG_SEARCH = Hi @**{}**, here's a list of everybody tagged with: {}
 
     {}
+STRING_TAG_SEARCH_TYPO: Hi @**{}**, I don't know the tag '{}' - did you mean '{}'?
+STRING_TAG_SEARCH_UNKNOWN: Hi @**{}**, I don't know the tag '{}'
 STRING_TAG_JOIN_AND =  and
 STRING_TAG_LIMIT = Tag search is currently limited to: {}
 STRING_TAG_UNLIMIT = Tag search is currently unlimited

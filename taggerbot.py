@@ -1,11 +1,12 @@
 import collections
 import contextlib
+import difflib
 import logging
 import json
 import pathlib
 import textwrap
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,18 @@ class TagMapping:
         if user is not None:
             return self.users[user]
         raise KeyError()
+
+    def __contains__(self, tag):
+        return tag in self.tags
+
+    def nearest(self, tag) -> Tuple[str, float]:
+        return max(
+            (
+                (t, difflib.SequenceMatcher(a=t.lower(), b=tag.lower()).ratio())
+                for t in self.tags.keys()
+            ),
+            key=lambda e: e[1],
+        )
 
 
 class StorageContainer:
@@ -148,6 +161,8 @@ class TaggerBotHandler:
     strings = {
         "TAG_LIST": "Hi @**{}**, you are currently tagged with: {}",
         "TAG_SEARCH": "Hi @**{}**, here's a list of everybody tagged with: {}\n\n{}",
+        "TAG_SEARCH_TYPO": "Hi @**{}**, I don't know the tag '{}' - did you mean '{}'?",
+        "TAG_SEARCH_UNKNOWN": "Hi @**{}**, I don't know the tag '{}'",
         "TAG_JOIN_AND": "and",
         "TAG_LIMIT": "Tag search is currently limited to: {}",
         "TAG_UNLIMIT": "Tag search is currently unlimited",
@@ -259,6 +274,24 @@ class TaggerBotHandler:
             elif command in [self.strings["COMMAND_SEARCH"]]:
                 all_tags = read_parameters(params)
                 with TagMapping().use(storage) as tags:
+                    for tag in all_tags:
+                        if tag not in tags:
+                            nearest, ratio = tags.nearest(tag)
+                            if ratio > 0.75:
+                                bot_handler.send_reply(
+                                    message,
+                                    self.strings["TAG_SEARCH_TYPO"].format(
+                                        sender, tag, nearest,
+                                    ),
+                                )
+                            else:
+                                bot_handler.send_reply(
+                                    message,
+                                    self.strings["TAG_SEARCH_UNKNOWN"].format(
+                                        sender, tag,
+                                    ),
+                                )
+                            return
                     results = [tags.find(tag=tag) for tag in all_tags]
                     limit = set(storage.get("limit", []))
                     if len(limit) > 0:
