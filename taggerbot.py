@@ -275,8 +275,8 @@ class TaggerBotHandler:
                 all_tags = read_parameters(params)
                 with TagMapping().use(storage) as tags:
                     for tag in all_tags:
-                        if tag not in tags:
-                            nearest, ratio = tags.nearest(tag)
+                        if tag.lower() not in tags:
+                            nearest, ratio = tags.nearest(tag.lower())
                             if ratio > 0.75:
                                 bot_handler.send_reply(
                                     message,
