@@ -1,2 +1,2 @@
-[TaggerBot]
+[tagger-bot]
 storage = db.json

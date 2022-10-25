@@ -91,13 +91,13 @@ class TagMapping:
 
 class StorageContainer:
     def get(self, key, default=None):
-        raise NotImplemented
+        raise NotImplementedError()
 
     def put(self, key, val):
-        raise NotImplemented
+        raise NotImplementedError()
 
     def contains(self, key):
-        raise NotImplemented
+        raise NotImplementedError()
 
 
 class ZulipStorage(StorageContainer):
@@ -178,7 +178,8 @@ class Command_Manage:
         with TagMapping().use(storage) as tags:
             self.mutator(tags, sender, *all_tags)
             return _("Hi @**{}**, you are currently tagged with: {}").format(
-                sender, ", ".join(tags.find(user=sender)),
+                sender,
+                ", ".join(tags.find(user=sender)),
             )
 
 
@@ -196,12 +197,17 @@ def command_search(
                 nearest, ratio = tags.nearest(tag.lower())
                 if ratio > 0.75:
                     return _("Hi @**{}**, I don't know the tag '{}'").format(
-                        sender, tag, nearest,
+                        sender,
+                        tag,
+                        nearest,
                     )
                 else:
                     return _(
                         "Hi @**{}**, I don't know the tag '{}' - did you mean '{}'?"
-                    ).format(sender, tag,)
+                    ).format(
+                        sender,
+                        tag,
+                    )
 
         results = [tags.find(tag=tag) for tag in all_tags]
         limit = set(storage.get("limit", []))
@@ -321,7 +327,7 @@ class TaggerBotHandler:
 
     def initialize(self, bot_handler: Any) -> None:
         self.storage = ""
-        self.config_info = bot_handler.get_config_info("TaggerBot")
+        self.config_info = bot_handler.get_config_info("tagger-bot")
         for key, val in self.config_info.items():
             if key == "language":
                 lang = gettext.translation(
